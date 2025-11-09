@@ -1,0 +1,173 @@
+// Gas Station RFID Control System - Prisma Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== ENUMS ==========
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum StationStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+enum PumpStatus {
+  LOCKED
+  OPEN
+  BROKEN
+}
+
+enum VerificationResult {
+  SUCCESS
+  FAILED
+  ERROR
+}
+
+// ========== MODELS ==========
+
+model User {
+  id                    Int                    @id @default(autoincrement())
+  username              String                 @unique @db.VarChar(100)
+  passwordHash          String                 @db.VarChar(255)
+  fullName              String?                @db.VarChar(255)
+  role                  UserRole               @default(OPERATOR)
+  isActive              Boolean                @default(true)
+  lastLogin             DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  // Relations
+  verificationSessions  VerificationSession[]
+  authTokens            AuthToken[]
+
+  @@index([username])
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model GasStation {
+  id        Int            @id @default(autoincrement())
+  name      String         @db.VarChar(255)
+  location  String         @db.VarChar(255)
+  status    StationStatus  @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  // Relations
+  pumps     Pump[]
+
+  @@index([status])
+  @@index([name])
+  @@map("gas_stations")
+}
+
+model Pump {
+  id              Int      @id @default(autoincrement())
+  stationId       Int
+  pumpNumber      Int
+  mainRfidTag     String   @unique @db.VarChar(100)
+  status          PumpStatus @default(LOCKED)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  station               GasStation            @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  expectedChildTags     ExpectedChildTag[]
+  verificationSessions  VerificationSession[]
+
+  @@unique([stationId, pumpNumber], name: "unique_station_pump")
+  @@index([stationId])
+  @@index([mainRfidTag])
+  @@index([status])
+  @@map("pumps")
+}
+
+model ExpectedChildTag {
+  id          Int      @id @default(autoincrement())
+  pumpId      Int
+  tagId       String   @db.VarChar(100)
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  pump        Pump     @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+
+  @@unique([pumpId, tagId], name: "unique_pump_tag")
+  @@index([pumpId])
+  @@index([tagId])
+  @@index([isActive])
+  @@map("expected_child_tags")
+}
+
+model VerificationSession {
+  id                  Int                 @id @default(autoincrement())
+  pumpId              Int
+  userId              Int?
+  mainTagScanned      String              @db.VarChar(100)
+  verificationResult  VerificationResult
+  missingTagsCount    Int                 @default(0)
+  unexpectedTagsCount Int                 @default(0)
+  totalScanned        Int                 @default(0)
+  resultMessage       String?             @db.Text
+  timestamp           DateTime            @default(now())
+
+  // Relations
+  pump                Pump                @relation(fields: [pumpId], references: [id], onDelete: Cascade)
+  user                User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  scannedChildTags    ScannedChildTag[]
+
+  @@index([pumpId])
+  @@index([userId])
+  @@index([verificationResult])
+  @@index([timestamp(sort: Desc)])
+  @@map("verification_sessions")
+}
+
+model ScannedChildTag {
+  id          Int      @id @default(autoincrement())
+  sessionId   Int
+  tagId       String   @db.VarChar(100)
+  scanOrder   Int
+  isExpected  Boolean
+  timestamp   DateTime @default(now())
+
+  // Relations
+  session     VerificationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([tagId])
+  @@map("scanned_child_tags")
+}
+
+model AuthToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("auth_tokens")
+}
