@@ -4,8 +4,8 @@ services:
     env: node
     region: frankfurt # or oregon, singapore depending on your location
     plan: free # Change to 'starter' or higher for production
-    buildCommand: ./render-build.sh
-    startCommand: ./render-start.sh
+    buildCommand: npm ci && npm run build && npx prisma generate
+    startCommand: cd /opt/render/project && npx prisma migrate deploy && npm start
     envVars:
       - key: NODE_ENV
         value: production

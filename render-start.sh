@@ -6,6 +6,27 @@ echo "Current directory: $(pwd)"
 echo "Directory contents:"
 ls -la
 
+# Ensure we're in the project root
+# Try multiple possible locations
+if [ ! -f "package.json" ]; then
+    echo "package.json not found in current directory, searching..."
+    if [ -f "/opt/render/project/package.json" ]; then
+        echo "Found package.json at /opt/render/project, changing directory..."
+        cd /opt/render/project
+    elif [ -f "../package.json" ]; then
+        echo "Found package.json in parent directory, changing directory..."
+        cd ..
+    elif [ -f "../../package.json" ]; then
+        echo "Found package.json two levels up, changing directory..."
+        cd ../..
+    fi
+fi
+
+echo ""
+echo "Final working directory: $(pwd)"
+echo "Directory contents:"
+ls -la
+
 echo ""
 echo "=== Checking for dist folder ==="
 if [ -d "dist" ]; then
@@ -24,6 +45,7 @@ echo "=== Checking for dist/server.js ==="
 if [ -f "dist/server.js" ]; then
     echo "✓ dist/server.js exists"
     echo "File size: $(wc -c < dist/server.js) bytes"
+    echo "Full path: $(pwd)/dist/server.js"
 else
     echo "✗ ERROR: dist/server.js NOT FOUND!"
     echo "Files in dist:"
@@ -37,4 +59,5 @@ npx prisma migrate deploy
 
 echo ""
 echo "=== Starting server ==="
+echo "Running: node dist/server.js from $(pwd)"
 node dist/server.js
