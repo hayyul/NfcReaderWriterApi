@@ -4,8 +4,8 @@ services:
     env: node
     region: frankfurt  # or oregon, singapore depending on your location
     plan: free  # Change to 'starter' or higher for production
-    buildCommand: npm install && npm run build && npx prisma generate && npx prisma migrate deploy
-    startCommand: npm start
+    buildCommand: npm install && npm run build && npx prisma generate && npx prisma migrate deploy && ls -la && ls -la dist
+    startCommand: pwd && ls -la && ls -la dist && node dist/server.js
     envVars:
       - key: NODE_ENV
         value: production
