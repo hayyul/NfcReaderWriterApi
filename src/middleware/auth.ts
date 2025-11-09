@@ -1,16 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
-// Extend FastifyRequest to include user
-declare module 'fastify' {
-  interface FastifyRequest {
-    user?: {
-      userId: number;
-      username: string;
-      role: string;
-    };
-  }
-}
-
 /**
  * Verify JWT token middleware
  */
