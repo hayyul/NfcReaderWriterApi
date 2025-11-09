@@ -15,8 +15,8 @@ Backend API for Gas Station RFID Control System built with **Node.js**, **TypeSc
 ## Prerequisites
 
 - Node.js 20+ installed
-- Docker & Docker Compose installed
 - npm or yarn
+- Neon database account (free tier available)
 
 ## Quick Start
 
@@ -26,24 +26,25 @@ Backend API for Gas Station RFID Control System built with **Node.js**, **TypeSc
 npm install
 ```
 
-### 2. Start PostgreSQL Database
+### 2. Configure Environment
+
+Copy `.env.example` to `.env` and add your Neon database connection string:
 
 ```bash
-# Start PostgreSQL in Docker
-docker-compose up -d
-
-# Check if it's running
-docker ps
+cp .env.example .env
+# Edit .env and add your DATABASE_URL from Neon
 ```
 
-### 3. Set Up Database
+Get your connection string from [Neon Console](https://console.neon.tech).
+
+### 3. Set Up Database (First Time Only)
 
 ```bash
 # Generate Prisma Client
 npm run prisma:generate
 
-# Run database migrations
-npm run prisma:migrate
+# Run database migrations (creates tables)
+npx prisma migrate deploy
 
 # Seed database with sample data
 npm run prisma:seed
@@ -55,7 +56,9 @@ npm run prisma:seed
 npm run dev
 ```
 
-The API will be running at: **http://localhost:3000**
+The API will be running at: **http://localhost:4000**
+
+**Note:** This setup uses Neon PostgreSQL for both local development and production. No Docker required! 🎉
 
 ## Available Scripts
 
@@ -151,24 +154,31 @@ Opens at: **http://localhost:5555**
 
 ## Environment Variables
 
-Copy `.env` and configure:
+Your `.env` file (same for local and production):
 
 ```env
 # Server
 NODE_ENV=development
-PORT=3000
+PORT=4000
 HOST=0.0.0.0
 
-# Database
-DATABASE_URL=postgresql://postgres:postgres123@localhost:5434/gasstation
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://user:pass@host.neon.tech/db?sslmode=require
 
-# JWT
-JWT_SECRET=your-secret-key
+# JWT (generate secure secret)
+JWT_SECRET=your-secure-secret-minimum-64-characters
 JWT_EXPIRES_IN=24h
 
 # CORS
-CORS_ORIGIN=http://localhost:8081
+CORS_ORIGIN=*
 ```
+
+**Generate secure JWT secret:**
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+See `.env.example` for all available options.
 
 ## Project Structure
 
@@ -200,20 +210,14 @@ gas-station-api/
 
 ## Troubleshooting
 
-### Port 5432 already in use
-```bash
-# The docker-compose.yml is configured to use port 5434 to avoid conflicts
-# Make sure your DATABASE_URL in .env uses port 5434
-# If you need to use port 5432, stop local PostgreSQL: brew services stop postgresql
-```
+### Database connection slow on first request
+Neon free tier auto-suspends after inactivity. First request takes 1-2 seconds to wake up. Subsequent requests are instant.
 
 ### Database connection error
 ```bash
-# Check if Docker container is running
-docker ps
-
-# Restart container
-docker-compose restart
+# Verify your DATABASE_URL in .env is correct
+# Make sure it includes ?sslmode=require
+# Check Neon dashboard to ensure database is active
 ```
 
 ### Prisma Client not generated
@@ -221,16 +225,45 @@ docker-compose restart
 npm run prisma:generate
 ```
 
+### Need to reset database
+```bash
+# WARNING: This deletes all data
+npm run db:reset
+npm run prisma:seed
+```
+
+## Deployment
+
+Ready to deploy to production? See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete instructions on deploying to:
+
+- **Database**: Neon (Serverless PostgreSQL)
+- **Backend**: Render (Free tier available)
+
+Quick deployment checklist:
+- ✅ Push code to GitHub
+- ✅ Create Neon database
+- ✅ Deploy to Render with one click
+- ✅ Configure environment variables
+- ✅ Database migrations run automatically
+
+## Documentation
+
+- **[SINGLE_DATABASE_SETUP.md](./SINGLE_DATABASE_SETUP.md)** - Database configuration (Neon)
+- **[RENDER_CONFIG.md](./RENDER_CONFIG.md)** - Deploy to Render (start here!)
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
+- **[API_TESTING.md](./API_TESTING.md)** - API testing guide
+- **[FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md)** - Frontend integration
+
 ## Next Steps
 
 1. ✅ Database and Prisma setup
-2. ⏳ Implement Fastify server
-3. ⏳ Create API routes and controllers
-4. ⏳ Add authentication middleware
-5. ⏳ Add validation with Zod
-6. ⏳ Connect with React Native app
+2. ✅ Implement Fastify server
+3. ✅ Create API routes and controllers
+4. ✅ Add authentication middleware
+5. ✅ Add validation with Zod
+6. 🔄 Deploy to production
+7. 🔄 Connect with React Native app
 
 ## License
 
 MIT
-# NfcReaderWriterApi

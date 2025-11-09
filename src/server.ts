@@ -27,7 +27,7 @@ const server = Fastify({
 async function registerPlugins() {
   // CORS
   await server.register(cors, {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:8081',
+    origin: process.env.CORS_ORIGIN === '*' ? true : (process.env.CORS_ORIGIN || 'http://localhost:8081'),
     credentials: true,
   });
 
