@@ -25,10 +25,29 @@ const server = Fastify({
 
 // Register plugins
 async function registerPlugins() {
+  // Parse CORS origins from environment variable
+  const corsOrigin = process.env.CORS_ORIGIN || '*';
+  let allowedOrigins: boolean | string | string[] | RegExp;
+
+  if (corsOrigin === '*') {
+    // Allow all origins
+    allowedOrigins = true;
+  } else if (corsOrigin.includes(',')) {
+    // Multiple origins (comma-separated)
+    allowedOrigins = corsOrigin.split(',').map(origin => origin.trim());
+  } else {
+    // Single origin
+    allowedOrigins = corsOrigin;
+  }
+
   // CORS
   await server.register(cors, {
-    origin: process.env.CORS_ORIGIN === '*' ? true : (process.env.CORS_ORIGIN || 'http://localhost:8081'),
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
+    maxAge: 86400, // 24 hours
   });
 
   // JWT
@@ -195,6 +214,18 @@ async function start() {
       host: HOST,
     });
 
+    // Display CORS configuration
+    const corsOrigin = process.env.CORS_ORIGIN || '*';
+    let corsDisplay: string;
+    if (corsOrigin === '*') {
+      corsDisplay = '* (All origins)';
+    } else if (corsOrigin.includes(',')) {
+      const origins = corsOrigin.split(',').map(o => o.trim());
+      corsDisplay = `\n     ${origins.join('\n     ')}`;
+    } else {
+      corsDisplay = corsOrigin;
+    }
+
     console.log('');
     console.log('🚀 ========================================');
     console.log('   Gas Station RFID API Server Started!');
@@ -204,6 +235,7 @@ async function start() {
     console.log(`🏥 Health:      http://${HOST}:${PORT}/health`);
     console.log(`📚 API Docs:    http://${HOST}:${PORT}/api/v1`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 CORS:        ${corsDisplay}`);
     console.log('');
     console.log('✅ Ready to accept connections!');
     console.log('');
