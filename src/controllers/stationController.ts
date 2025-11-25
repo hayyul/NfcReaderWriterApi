@@ -158,11 +158,25 @@ export async function getStation(request: FastifyRequest<{ Params: { id: string 
 export async function createStation(request: FastifyRequest, reply: FastifyReply) {
   try {
     const body = createStationSchema.parse(request.body);
+    const user = request.user as any;
 
     const station = await prisma.gasStation.create({
       data: {
         name: body.name,
         location: body.location,
+        lastModifiedBy: user?.id,
+      },
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'CREATE',
+        entityType: 'STATION',
+        entityId: station.id,
+        newValues: station as any,
+        ipAddress: request.ip || request.socket.remoteAddress,
       },
     });
 
@@ -203,10 +217,42 @@ export async function updateStation(
   try {
     const id = parseInt(request.params.id);
     const body = updateStationSchema.parse(request.body);
+    const user = request.user as any;
+
+    // Get old values
+    const oldStation = await prisma.gasStation.findUnique({
+      where: { id },
+    });
+
+    if (!oldStation) {
+      return reply.status(404).send({
+        success: false,
+        error: {
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Gas station not found',
+        },
+      });
+    }
 
     const station = await prisma.gasStation.update({
       where: { id },
-      data: body,
+      data: {
+        ...body,
+        lastModifiedBy: user?.id,
+      },
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'UPDATE',
+        entityType: 'STATION',
+        entityId: station.id,
+        oldValues: oldStation as any,
+        newValues: station as any,
+        ipAddress: request.ip || request.socket.remoteAddress,
+      },
     });
 
     return reply.status(200).send({
@@ -255,9 +301,37 @@ export async function deleteStation(
 ) {
   try {
     const id = parseInt(request.params.id);
+    const user = request.user as any;
+
+    // Get station before deletion for audit log
+    const station = await prisma.gasStation.findUnique({
+      where: { id },
+    });
+
+    if (!station) {
+      return reply.status(404).send({
+        success: false,
+        error: {
+          code: 'RESOURCE_NOT_FOUND',
+          message: 'Gas station not found',
+        },
+      });
+    }
 
     await prisma.gasStation.delete({
       where: { id },
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'DELETE',
+        entityType: 'STATION',
+        entityId: id,
+        oldValues: station as any,
+        ipAddress: request.ip || request.socket.remoteAddress,
+      },
     });
 
     return reply.status(204).send();

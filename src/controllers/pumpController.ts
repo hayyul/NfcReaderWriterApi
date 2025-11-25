@@ -8,6 +8,60 @@ import {
 } from '../types/schemas';
 
 /**
+ * Get all pumps (across all stations)
+ */
+export async function getAllPumps(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  try {
+    const pumps = await prisma.pump.findMany({
+      include: {
+        station: {
+          select: {
+            name: true,
+          },
+        },
+        expectedChildTags: {
+          where: { isActive: true },
+        },
+      },
+      orderBy: [
+        { stationId: 'asc' },
+        { pumpNumber: 'asc' },
+      ],
+    });
+
+    const data = pumps.map((pump) => ({
+      id: pump.id,
+      gasStationId: pump.stationId, // Map to gasStationId for frontend
+      stationId: pump.stationId,     // Keep both for compatibility
+      stationName: pump.station.name,
+      pumpNumber: pump.pumpNumber,
+      mainRfidTag: pump.mainRfidTag,
+      status: pump.status,
+      expectedChildTags: pump.expectedChildTags.map((tag) => tag.tagId),
+      createdAt: pump.createdAt,
+      updatedAt: pump.updatedAt,
+    }));
+
+    return reply.status(200).send({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    request.log.error(error);
+    return reply.status(500).send({
+      success: false,
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'An error occurred',
+      },
+    });
+  }
+}
+
+/**
  * Get pumps for a station
  */
 export async function getPumpsByStation(
@@ -34,7 +88,8 @@ export async function getPumpsByStation(
 
     const data = pumps.map((pump) => ({
       id: pump.id,
-      stationId: pump.stationId,
+      gasStationId: pump.stationId, // Map to gasStationId for frontend
+      stationId: pump.stationId,     // Keep both for compatibility
       stationName: pump.station.name,
       pumpNumber: pump.pumpNumber,
       mainRfidTag: pump.mainRfidTag,
@@ -107,7 +162,8 @@ export async function getPump(
 
     const data = {
       id: pump.id,
-      stationId: pump.stationId,
+      gasStationId: pump.stationId, // Map to gasStationId for frontend
+      stationId: pump.stationId,     // Keep both for compatibility
       stationName: pump.station.name,
       pumpNumber: pump.pumpNumber,
       mainRfidTag: pump.mainRfidTag,

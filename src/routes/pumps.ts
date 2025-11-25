@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import {
+  getAllPumps,
   getPumpsByStation,
   getPump,
   createPump,
@@ -9,6 +10,9 @@ import {
 import { authenticate, requireAdmin } from '../middleware/auth';
 
 export default async function pumpRoutes(server: FastifyInstance) {
+  // GET /api/v1/pumps - Get all pumps across all stations
+  server.get('/', { preHandler: [authenticate] }, getAllPumps);
+
   // GET /api/v1/pumps/:id
   server.get('/:id', { preHandler: [authenticate] }, getPump);
 

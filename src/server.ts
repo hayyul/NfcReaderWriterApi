@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import stationRoutes from './routes/stations';
 import pumpRoutes, { stationPumpRoutes } from './routes/pumps';
 import verificationRoutes, { pumpVerificationRoutes } from './routes/verifications';
+import adminRoutes from './routes/admin';
 
 // Load environment variables
 dotenv.config();
@@ -101,6 +102,7 @@ async function registerRoutes() {
           delete: 'DELETE /api/v1/stations/:id (admin)',
         },
         pumps: {
+          listAll: 'GET /api/v1/pumps',
           listByStation: 'GET /api/v1/stations/:stationId/pumps',
           get: 'GET /api/v1/pumps/:id',
           create: 'POST /api/v1/stations/:stationId/pumps (admin)',
@@ -112,6 +114,12 @@ async function registerRoutes() {
           list: 'GET /api/v1/pumps/:id/verifications',
           get: 'GET /api/v1/verifications/:sessionId',
         },
+        admin: {
+          analytics: 'GET /api/v1/admin/analytics (admin)',
+          auditLogs: 'GET /api/v1/admin/audit-logs (admin)',
+          allVerifications: 'GET /api/v1/admin/verifications/all (admin)',
+          stationLogs: 'GET /api/v1/admin/stations/:id/logs (admin)',
+        },
       },
     };
   });
@@ -121,6 +129,7 @@ async function registerRoutes() {
   await server.register(stationRoutes, { prefix: '/api/v1/stations' });
   await server.register(pumpRoutes, { prefix: '/api/v1/pumps' });
   await server.register(verificationRoutes, { prefix: '/api/v1/verifications' });
+  await server.register(adminRoutes, { prefix: '/api/v1/admin' });
 
   // Register nested routes (station pumps)
   await server.register(

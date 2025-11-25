@@ -84,13 +84,32 @@ export async function verifyRfidTags(
       message = `ALERT: ${issues.join(', ')}. Pump may have been tampered with!`;
     }
 
-    // Update pump status if verification failed
+    // Update pump status and lastVerificationAt if verification failed
     if (!isSuccess && pump.status === 'LOCKED') {
       await prisma.pump.update({
         where: { id: pumpId },
-        data: { status: 'BROKEN' },
+        data: {
+          status: 'BROKEN',
+          lastVerificationAt: new Date(),
+        },
+      });
+    } else {
+      // Update lastVerificationAt even for successful verifications
+      await prisma.pump.update({
+        where: { id: pumpId },
+        data: {
+          lastVerificationAt: new Date(),
+        },
       });
     }
+
+    // Update station's lastVerificationAt
+    await prisma.gasStation.update({
+      where: { id: pump.stationId },
+      data: {
+        lastVerificationAt: new Date(),
+      },
+    });
 
     // Create verification session
     const session = await prisma.verificationSession.create({

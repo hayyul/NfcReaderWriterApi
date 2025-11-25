@@ -13,6 +13,7 @@ datasource db {
 // ========== ENUMS ==========
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   OPERATOR
   VIEWER
@@ -36,6 +37,20 @@ enum VerificationResult {
   ERROR
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditEntityType {
+  STATION
+  PUMP
+  USER
+  VERIFICATION
+  EXPECTED_TAG
+}
+
 // ========== MODELS ==========
 
 model User {
@@ -52,6 +67,9 @@ model User {
   // Relations
   verificationSessions  VerificationSession[]
   authTokens            AuthToken[]
+  auditLogs             AuditLog[]
+  modifiedStations      GasStation[]          @relation("StationModifier")
+  modifiedPumps         Pump[]                @relation("PumpModifier")
 
   @@index([username])
   @@index([role])
@@ -60,39 +78,49 @@ model User {
 }
 
 model GasStation {
-  id        Int            @id @default(autoincrement())
-  name      String         @db.VarChar(255)
-  location  String         @db.VarChar(255)
-  status    StationStatus  @default(ACTIVE)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id                  Int            @id @default(autoincrement())
+  name                String         @db.VarChar(255)
+  location            String         @db.VarChar(255)
+  status              StationStatus  @default(ACTIVE)
+  lastModifiedBy      Int?
+  lastVerificationAt  DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   // Relations
-  pumps     Pump[]
+  pumps               Pump[]
+  lastModifier        User?          @relation("StationModifier", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([name])
+  @@index([lastModifiedBy])
+  @@index([lastVerificationAt])
   @@map("gas_stations")
 }
 
 model Pump {
-  id              Int      @id @default(autoincrement())
-  stationId       Int
-  pumpNumber      Int
-  mainRfidTag     String   @unique @db.VarChar(100)
-  status          PumpStatus @default(LOCKED)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    Int      @id @default(autoincrement())
+  stationId             Int
+  pumpNumber            Int
+  mainRfidTag           String   @unique @db.VarChar(100)
+  status                PumpStatus @default(LOCKED)
+  lastModifiedBy        Int?
+  lastVerificationAt    DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   // Relations
   station               GasStation            @relation(fields: [stationId], references: [id], onDelete: Cascade)
   expectedChildTags     ExpectedChildTag[]
   verificationSessions  VerificationSession[]
+  lastModifier          User?                 @relation("PumpModifier", fields: [lastModifiedBy], references: [id], onDelete: SetNull)
 
   @@unique([stationId, pumpNumber], name: "unique_station_pump")
   @@index([stationId])
   @@index([mainRfidTag])
   @@index([status])
+  @@index([lastModifiedBy])
+  @@index([lastVerificationAt])
   @@map("pumps")
 }
 
@@ -170,4 +198,25 @@ model AuthToken {
   @@index([token])
   @@index([expiresAt])
   @@map("auth_tokens")
+}
+
+model AuditLog {
+  id          Int               @id @default(autoincrement())
+  userId      Int
+  action      AuditAction
+  entityType  AuditEntityType
+  entityId    Int
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?           @db.VarChar(45)
+  createdAt   DateTime          @default(now())
+
+  // Relations
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt(sort: Desc)])
+  @@index([action])
+  @@map("audit_logs")
 }

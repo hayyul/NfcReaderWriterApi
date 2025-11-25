@@ -18,18 +18,36 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 }
 
 /**
- * Check if user has admin role
+ * Check if user has admin role (includes SUPER_ADMIN)
  */
 export async function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   await authenticate(request, reply);
 
   const user = request.user as any;
-  if (user?.role !== 'ADMIN') {
+  if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.role)) {
     reply.status(403).send({
       success: false,
       error: {
         code: 'INSUFFICIENT_PERMISSIONS',
         message: 'Admin role required',
+      },
+    });
+  }
+}
+
+/**
+ * Check if user has super admin role
+ */
+export async function requireSuperAdmin(request: FastifyRequest, reply: FastifyReply) {
+  await authenticate(request, reply);
+
+  const user = request.user as any;
+  if (user?.role !== 'SUPER_ADMIN') {
+    reply.status(403).send({
+      success: false,
+      error: {
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: 'Super admin role required',
       },
     });
   }
